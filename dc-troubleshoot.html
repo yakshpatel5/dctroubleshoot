@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DC Troubleshoot - Yaksh Patel</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#080c10; --panel:#0d1117; --border:#1a2535;
+  --accent:#00d4ff; --accent2:#ff6b35; --green:#00ff88;
+  --yellow:#ffd700; --purple:#a78bfa; --text:#c9d1d9; --muted:#4a5568;
+  --mono:'Share Tech Mono',monospace; --sans:'Barlow',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+.wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:32px 20px 60px;}
+
+/* LIGHT MODE */
+body.light{--bg:#f0f4f8;--panel:#fff;--border:#d1dce8;--text:#1a202c;--muted:#718096;}
+body.light input,body.light textarea,body.light select{background:#f8fafc!important;color:#1a202c!important;}
+body.light .step-block,body.light .fc-match,body.light .cmd-row{background:#f8fafc!important;}
+body.light .tabs,body.light .main-nav{background:#e2e8f0!important;}
+
+/* THEME TOGGLE */
+.theme-btn{position:fixed;top:14px;right:16px;z-index:999;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.theme-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* HEADER */
+.header{text-align:center;margin-bottom:28px;}
+.badge{display:inline-block;font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid var(--accent);padding:4px 12px;border-radius:2px;letter-spacing:3px;margin-bottom:12px;}
+.header h1{font-size:clamp(24px,5vw,42px);font-weight:700;letter-spacing:-1px;margin-bottom:6px;}
+.header h1 span{color:var(--accent);}
+.header p{color:var(--muted);font-size:14px;}
+
+/* STATS BAR */
+.stats-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+.stat-chip{flex:1;min-width:100px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center;}
+.stat-val{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--accent);}
+.stat-val.m{color:var(--purple);}
+.stat-val.v{color:var(--green);}
+.stat-val.o{color:var(--accent2);}
+.stat-key{font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--mono);letter-spacing:1px;}
+
+/* MAIN NAV */
+.main-nav{display:flex;gap:4px;margin-bottom:20px;background:var(--bg);padding:4px;border-radius:8px;border:1px solid var(--border);flex-wrap:wrap;}
+.nav-btn{flex:1;min-width:90px;padding:10px 6px;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:1px;cursor:pointer;border-radius:5px;border:none;background:transparent;color:var(--muted);transition:all 0.2s;}
+.nav-btn.active{background:var(--accent);color:#000;font-weight:700;}
+.nav-btn.active.nl{background:var(--purple);}
+.nav-btn.active.ne{background:var(--accent2);}
+.nav-btn.active.ns{background:var(--green);color:#000;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* SKU BAR */
+.sku-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.sku-btn{font-family:var(--mono);font-size:11px;padding:7px 16px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--muted);cursor:pointer;transition:all 0.2s;letter-spacing:1px;}
+.sku-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,0.07);}
+.sku-btn.sm.active{border-color:var(--purple);color:var(--purple);background:rgba(167,139,250,0.07);}
+.sku-btn.sv.active{border-color:var(--green);color:var(--green);background:rgba(52,211,153,0.07);}
+.sku-btn.so.active{border-color:var(--yellow);color:var(--yellow);background:rgba(255,215,0,0.07);}
+
+/* RULES BANNER */
+.rules-banner{background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.2);border-radius:6px;padding:14px 18px;margin-bottom:18px;}
+.rules-title{font-family:var(--mono);font-size:11px;color:var(--yellow);letter-spacing:2px;margin-bottom:10px;}
+.rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.rule-item{font-size:12px;color:var(--text);line-height:1.5;}
+.rule-item strong{color:var(--yellow);font-family:var(--mono);}
+
+/* SEARCH CARD */
+.search-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px;margin-bottom:18px;}
+.tabs{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);padding:4px;border-radius:6px;border:1px solid var(--border);}
+.tab{flex:1;padding:9px;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:1px;cursor:pointer;border-radius:4px;border:none;background:transparent;color:var(--muted);transition:all 0.2s;}
+.tab.active{background:var(--accent);color:#000;font-weight:700;}
+.inp-wrap{position:relative;margin-bottom:12px;}
+.inp-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;opacity:0.5;z-index:1;}
+input,textarea,select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px;padding:12px 12px 12px 40px;outline:none;transition:border-color 0.2s;}
+textarea{padding:12px;min-height:85px;resize:vertical;font-family:var(--sans);font-size:13px;}
+select{padding:10px 12px;}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);}
+input::placeholder,textarea::placeholder{color:var(--muted);}
+
+/* AUTOCOMPLETE */
+.ac-box{position:absolute;top:100%;left:0;right:0;background:#111820;border:1px solid var(--accent);border-top:none;border-radius:0 0 6px 6px;z-index:100;max-height:200px;overflow-y:auto;display:none;}
+.ac-item{padding:9px 13px;cursor:pointer;font-family:var(--mono);font-size:11px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;}
+.ac-item:hover{background:rgba(0,212,255,0.07);}
+.ac-fc{color:var(--accent2);min-width:55px;}
+.ac-desc{color:var(--text);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.ac-prog{font-size:9px;padding:2px 6px;border-radius:2px;white-space:nowrap;}
+.ac-prog.mariner{background:rgba(167,139,250,0.15);color:var(--purple);}
+.ac-prog.venera{background:rgba(52,211,153,0.15);color:var(--green);}
+.ac-prog.monitoring{background:rgba(255,215,0,0.12);color:var(--yellow);}
+
+/* QUICK CHIPS */
+.quick-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
+.quick-chips span{font-size:11px;color:var(--muted);font-family:var(--mono);align-self:center;}
+.chip{font-family:var(--mono);font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:3px;background:var(--bg);color:var(--accent2);cursor:pointer;transition:all 0.15s;}
+.chip:hover{border-color:var(--accent2);background:rgba(255,107,53,0.08);}
+
+/* SEARCH BTN */
+.search-btn{width:100%;padding:13px;background:var(--accent);color:#000;border:none;border-radius:6px;font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all 0.2s;}
+.search-btn:hover{background:#00b8d9;transform:translateY(-1px);}
+
+/* RESULT CARD */
+.result-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;display:none;margin-bottom:18px;}
+.result-card.show{display:block;}
+.result-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:13px 18px;border-bottom:1px solid var(--border);background:rgba(0,212,255,0.04);}
+.result-label{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;}
+.result-query{font-family:var(--mono);font-size:11px;color:var(--accent2);background:rgba(255,107,53,0.1);padding:3px 9px;border-radius:3px;border:1px solid rgba(255,107,53,0.2);}
+.export-btn{font-family:var(--mono);font-size:10px;padding:5px 10px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer;transition:all 0.15s;}
+.export-btn:hover{border-color:var(--accent);color:var(--accent);}
+.result-body{padding:20px 18px;}
+
+/* CONFIDENCE BADGE */
+.conf-badge{display:inline-block;font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:3px;letter-spacing:1px;margin-bottom:14px;}
+.conf-high{background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.3);color:var(--green);}
+.conf-med{background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);color:var(--yellow);}
+
+/* FC MATCH */
+.fc-match{margin-bottom:20px;padding:16px;background:var(--bg);border-radius:6px;border:1px solid var(--border);}
+.fc-match-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.fc-num{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--accent2);}
+.fc-desc{font-size:13px;color:var(--text);flex:1;}
+.prog-badge{font-family:var(--mono);font-size:9px;padding:3px 7px;border-radius:2px;}
+.prog-badge.mariner{background:rgba(167,139,250,0.15);color:var(--purple);border:1px solid rgba(167,139,250,0.3);}
+.prog-badge.venera{background:rgba(52,211,153,0.15);color:var(--green);border:1px solid rgba(52,211,153,0.3);}
+.prog-badge.monitoring{background:rgba(255,215,0,0.12);color:var(--yellow);border:1px solid rgba(255,215,0,0.3);}
+
+/* ACTIONS GRID */
+.actions-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;}
+.action-block{padding:11px 13px;border-radius:5px;border-left:3px solid;}
+.action-a{background:rgba(0,212,255,0.05);border-color:var(--accent);}
+.action-b{background:rgba(255,107,53,0.05);border-color:var(--accent2);}
+.action-c{background:rgba(52,211,153,0.05);border-color:var(--green);}
+.action-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:5px;}
+.action-a .action-label{color:var(--accent);}
+.action-b .action-label{color:var(--accent2);}
+.action-c .action-label{color:var(--green);}
+.action-text{font-size:12px;line-height:1.6;color:var(--text);}
+.action-text strong{color:var(--accent);}
+
+/* NO MATCH */
+.no-match{padding:14px 16px;background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.2);border-radius:6px;margin-bottom:16px;}
+.no-match-title{font-family:var(--mono);font-size:10px;color:var(--yellow);letter-spacing:2px;margin-bottom:5px;}
+.no-match p{font-size:12px;color:var(--text);}
+
+/* HISTORY */
+.history-section{margin-top:20px;}
+.history-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px;}
+.hist-item{display:flex;align-items:center;gap:9px;padding:8px 12px;background:var(--panel);border:1px solid var(--border);border-radius:5px;cursor:pointer;margin-bottom:6px;transition:all 0.15s;font-size:12px;}
+.hist-item:hover{border-color:var(--accent);}
+.hist-type{font-family:var(--mono);font-size:10px;color:var(--accent2);background:rgba(255,107,53,0.1);padding:2px 6px;border-radius:2px;}
+.hist-q{color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hist-time{font-family:var(--mono);font-size:10px;color:var(--muted);}
+
+/* COMMANDS TAB */
+.putty-card{background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.2);border-radius:8px;padding:18px;margin-bottom:22px;}
+.putty-title{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:2px;margin-bottom:14px;}
+.putty-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px;}
+.putty-item{text-align:center;}
+.p-val{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--accent2);}
+.p-key{font-size:10px;color:var(--muted);margin-top:2px;}
+.putty-steps li{font-size:12px;color:var(--text);line-height:1.8;margin-left:16px;}
+.cmd-section{margin-bottom:24px;}
+.cmd-sec-title{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:7px;margin-bottom:12px;}
+.cmd-note{font-size:11px;color:var(--accent2);font-family:var(--mono);margin-bottom:8px;padding:6px 10px;background:rgba(255,107,53,0.07);border-radius:4px;}
+.cmd-row{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:5px;background:var(--bg);border:1px solid var(--border);margin-bottom:7px;transition:border-color 0.15s;}
+.cmd-row:hover{border-color:var(--accent);}
+.cmd-label{font-size:12px;color:var(--text);flex:1;min-width:130px;}
+.cmd-label small{display:block;font-size:10px;color:var(--muted);margin-top:1px;font-family:var(--mono);}
+.cmd-code{font-family:var(--mono);font-size:11px;color:var(--accent);background:rgba(0,212,255,0.07);border:1px solid rgba(0,212,255,0.15);padding:5px 9px;border-radius:4px;flex:2;word-break:break-all;}
+.copy-btn{font-family:var(--mono);font-size:10px;padding:5px 9px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer;transition:all 0.15s;white-space:nowrap;flex-shrink:0;}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+.copy-btn.copied{border-color:var(--green);color:var(--green);}
+
+/* TICKET LOGGER */
+.form-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:22px;margin-bottom:20px;}
+.form-card h3{font-family:var(--mono);font-size:11px;letter-spacing:2px;margin-bottom:16px;}
+.form-card h3.cl{color:var(--purple);}
+.form-card h3.ce{color:var(--accent2);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.form-row.full{grid-template-columns:1fr;}
+.form-group label{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;display:block;margin-bottom:4px;}
+.form-group input,.form-group select,.form-group textarea{padding:9px 11px;}
+.form-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.btn-save{padding:10px 22px;background:var(--purple);color:#fff;border:none;border-radius:5px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all 0.2s;}
+.btn-save:hover{background:#9061f9;transform:translateY(-1px);}
+.btn-save.esc{background:var(--accent2);}
+.btn-save.esc:hover{background:#e55a25;}
+.btn-csv{padding:10px 16px;background:transparent;border:1px solid var(--border);border-radius:5px;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.btn-csv:hover{border-color:var(--accent);color:var(--accent);}
+
+/* LOG ENTRIES */
+.entries-list{display:flex;flex-direction:column;gap:8px;}
+.entry{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:13px 15px;}
+.entry-head{display:flex;align-items:center;gap:9px;margin-bottom:7px;flex-wrap:wrap;}
+.entry-fc{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent2);}
+.entry-ticket{font-family:var(--mono);font-size:10px;color:var(--muted);}
+.entry-time{font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:auto;}
+.entry-del{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0 4px;}
+.entry-del:hover{color:var(--accent2);}
+.status-badge{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:2px;}
+.status-resolved{background:rgba(0,255,136,0.1);color:var(--green);border:1px solid rgba(0,255,136,0.3);}
+.status-escalated{background:rgba(255,107,53,0.1);color:var(--accent2);border:1px solid rgba(255,107,53,0.3);}
+.status-ongoing{background:rgba(255,215,0,0.1);color:var(--yellow);border:1px solid rgba(255,215,0,0.3);}
+.entry-text{font-size:12px;color:var(--text);line-height:1.6;}
+.entry-note{font-size:11px;color:var(--muted);margin-top:4px;}
+.empty-state{text-align:center;padding:32px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+
+/* CHARTS */
+.chart-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:22px;margin-bottom:18px;}
+.chart-title{font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:2px;margin-bottom:18px;}
+.bar-row{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.bar-fc{font-family:var(--mono);font-size:10px;color:var(--accent2);min-width:65px;}
+.bar-track{flex:1;background:var(--bg);border-radius:3px;height:20px;overflow:hidden;border:1px solid var(--border);}
+.bar-fill{height:100%;border-radius:3px;display:flex;align-items:center;padding-left:7px;font-family:var(--mono);font-size:9px;font-weight:700;color:#000;transition:width 0.5s ease;min-width:30px;}
+.bar-fill.bm{background:var(--purple);}
+.bar-fill.bv{background:var(--green);}
+.bar-fill.bo{background:var(--yellow);}
+.bar-fill.bs{background:var(--accent);}
+.bar-count{font-family:var(--mono);font-size:10px;color:var(--muted);min-width:25px;text-align:right;}
+
+/* FOOTER */
+.footer{position:fixed;bottom:10px;right:14px;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;z-index:999;pointer-events:none;}
+
+/* MOBILE */
+@media(max-width:500px){
+  .wrap{padding:14px 12px 60px;}
+  .header h1{font-size:22px;}
+  .form-row{grid-template-columns:1fr;}
+  .actions-grid{grid-template-columns:1fr;}
+  .rules-grid{grid-template-columns:1fr;}
+  .stats-bar{gap:6px;}
+  .stat-chip{min-width:80px;}
+  .stat-val{font-size:17px;}
+  .putty-grid{grid-template-columns:repeat(3,1fr);}
+}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.fadein{animation:fadeUp 0.35s ease both;}
+</style>
+</head>
+<body>
+
+<button class="theme-btn" id="themeBtn" onclick="toggleTheme()">LIGHT</button>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="badge">DC SUPPORT TOOL v1.8</div>
+    <h1>Instant <span>Troubleshoot</span></h1>
+    <p>Mariner Gen7.x A100 &amp; Venera Gen9.x MI300X</p>
+  </div>
+
+  <!-- STATS BAR -->
+  <div class="stats-bar" id="statsBar"></div>
+
+  <!-- MAIN NAV -->
+  <div class="main-nav">
+    <button class="nav-btn active" id="navSearch" onclick="showPage('search',this)">SEARCH</button>
+    <button class="nav-btn nl"     id="navLogger" onclick="showPage('logger',this)">TICKET LOG</button>
+    <button class="nav-btn ne"     id="navEsc"    onclick="showPage('esc',this)">ESCALATIONS</button>
+    <button class="nav-btn ns"     id="navStats"  onclick="showPage('stats',this)">FC STATS</button>
+  </div>
+
+  <!-- ===== PAGE: SEARCH ===== -->
+  <div class="page active" id="page-search">
+
+    <div class="sku-bar">
+      <button class="sku-btn active" id="skuAll"  onclick="setSku('all',this)">ALL SYSTEMS</button>
+      <button class="sku-btn sm"     id="skuMar"  onclick="setSku('Mariner',this)">MARINER GEN7</button>
+      <button class="sku-btn sv"     id="skuVen"  onclick="setSku('Venera',this)">VENERA GEN9</button>
+      <button class="sku-btn so"     id="skuMon"  onclick="setSku('Monitoring',this)">MONITORING</button>
+    </div>
+
+    <div class="rules-banner">
+      <div class="rules-title">TBS RULES - QUICK REFERENCE</div>
+      <div class="rules-grid">
+        <div class="rule-item"><strong>Rule 1:</strong> Apply actions on 1st ticket or if not yet taken.</div>
+        <div class="rule-item"><strong>Rule 2:</strong> Repeat within 28 days same FC - Run VFDK.</div>
+        <div class="rule-item"><strong>Rule 3:</strong> 3rd repeat + VFDK clean - Escalate L2.</div>
+        <div class="rule-item"><strong>Rule 4:</strong> Part OOS / pending RMA - Run VFDK interim.</div>
+        <div class="rule-item"><strong>Rule 5:</strong> GDCO log review - within 24hrs, source: Dcmx/CSIDiagLinuxActivity.</div>
+        <div class="rule-item"><strong>Rule 6:</strong> Running VFDK - also run FULL validation test.</div>
+      </div>
+    </div>
+
+    <div class="search-card">
+      <div class="tabs">
+        <button class="tab active" id="tabCode"  onclick="switchTab('code',this)">FAULT CODE</button>
+        <button class="tab"        id="tabDesc"  onclick="switchTab('desc',this)">DESCRIBE ISSUE</button>
+        <button class="tab"        id="tabCmds"  onclick="switchTab('cmds',this)">COMMANDS</button>
+      </div>
+
+      <!-- FAULT CODE TAB -->
+      <div id="tabPaneCode">
+        <div class="inp-wrap">
+          <span class="inp-icon">&#9888;</span>
+          <input id="fcInput" type="text" placeholder="Type fault code e.g. 62440 or 62635..." autocomplete="off"/>
+          <div class="ac-box" id="acBox"></div>
+        </div>
+        <div class="quick-chips">
+          <span>Quick:</span>
+          <div class="chip" onclick="fillCode('62440')">62440</div>
+          <div class="chip" onclick="fillCode('62635')">62635</div>
+          <div class="chip" onclick="fillCode('62786')">62786</div>
+          <div class="chip" onclick="fillCode('62271')">62271</div>
+          <div class="chip" onclick="fillCode('65595')">65595</div>
+          <div class="chip" onclick="fillCode('62702')">62702</div>
+          <div class="chip" onclick="fillCode('60077')">60077</div>
+          <div class="chip" onclick="fillCode('62652')">62652</div>
+        </div>
+        <button class="search-btn" onclick="doSearch()">GET RESOLUTION</button>
+      </div>
+
+      <!-- DESCRIBE TAB -->
+      <div id="tabPaneDesc" style="display:none">
+        <textarea id="descInput" placeholder="e.g. Blade not posting, no output on serial and no PXE request seen..."></textarea>
+        <br/><br/>
+        <button class="search-btn" onclick="doSearch()">GET RESOLUTION</button>
+      </div>
+
+      <!-- COMMANDS TAB -->
+      <div id="tabPaneCmds" style="display:none">
+
+        <div class="putty-card">
+          <div class="putty-title">PUTTY SERIAL SESSION SETUP</div>
+          <div class="putty-grid">
+            <div class="putty-item"><div class="p-val">Serial</div><div class="p-key">Connection Type</div></div>
+            <div class="putty-item"><div class="p-val">115200</div><div class="p-key">Baud Rate</div></div>
+            <div class="putty-item"><div class="p-val">8</div><div class="p-key">Data Bits</div></div>
+            <div class="putty-item"><div class="p-val">1</div><div class="p-key">Stop Bits</div></div>
+            <div class="putty-item"><div class="p-val">None</div><div class="p-key">Parity</div></div>
+            <div class="putty-item"><div class="p-val">None</div><div class="p-key">Flow Control</div></div>
+          </div>
+          <ol class="putty-steps">
+            <li>Open PuTTY - select <strong>Serial</strong> connection type</li>
+            <li>Set Speed to <strong>115200</strong> and enter correct COM port (check Device Manager)</li>
+            <li>Click <strong>Open</strong> then power cycle blade to capture POST from start</li>
+            <li>To exit: hold <strong>Left ALT</strong> then press <strong>T</strong></li>
+          </ol>
+        </div>
+
+        <div class="cmd-section">
+          <div class="cmd-sec-title">System Reset &amp; Control</div>
+          <div class="cmd-row"><div class="cmd-label">Master Reset<small>Cold reset management controller</small></div><div class="cmd-code">set sys cmd -c mc reset cold -i 2</div><button class="copy-btn" onclick="copyCmd(this,'set sys cmd -c mc reset cold -i 2')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">BCM Cold Reset<small>Wait 4 min then AC cycle node</small></div><div class="cmd-code">set sys cmd -i 2 -c mc reset cold</div><button class="copy-btn" onclick="copyCmd(this,'set sys cmd -i 2 -c mc reset cold')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Node Power Off</div><div class="cmd-code">set manager port off -i 2</div><button class="copy-btn" onclick="copyCmd(this,'set manager port off -i 2')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Power System On</div><div class="cmd-code">wcscli setpoweron -i 5</div><button class="copy-btn" onclick="copyCmd(this,'wcscli setpoweron -i 5')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Power System Off<small>Graceful shutdown</small></div><div class="cmd-code">wcscli setpoweroff -i 2</div><button class="copy-btn" onclick="copyCmd(this,'wcscli setpoweroff -i 2')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Restart System</div><div class="cmd-code">set system reset -i #</div><button class="copy-btn" onclick="copyCmd(this,'set system reset -i #')">COPY</button></div>
+        </div>
+
+        <div class="cmd-section">
+          <div class="cmd-sec-title">Serial Session</div>
+          <div class="cmd-row"><div class="cmd-label">Start Serial Session</div><div class="cmd-code">start serial session -i 4 -b1</div><button class="copy-btn" onclick="copyCmd(this,'start serial session -i 4 -b1')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Start Serial (generic)</div><div class="cmd-code">start serial session -i #</div><button class="copy-btn" onclick="copyCmd(this,'start serial session -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Exit Serial Session<small>Hold Left ALT then press T</small></div><div class="cmd-code">ALT + T</div><button class="copy-btn" onclick="copyCmd(this,'ALT+T')">COPY</button></div>
+        </div>
+
+        <div class="cmd-section">
+          <div class="cmd-sec-title">System Info</div>
+          <div class="cmd-row"><div class="cmd-label">Show Manager Inventory</div><div class="cmd-code">sh manager inventory</div><button class="copy-btn" onclick="copyCmd(this,'sh manager inventory')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">System Power State</div><div class="cmd-code">sh system state -i 2</div><button class="copy-btn" onclick="copyCmd(this,'sh system state -i 2')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">System Summary</div><div class="cmd-code">sh system info -i #</div><button class="copy-btn" onclick="copyCmd(this,'sh system info -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Blade Summary</div><div class="cmd-code">wcscli getbladeinfo -i #</div><button class="copy-btn" onclick="copyCmd(this,'wcscli getbladeinfo -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Check Rack Health</div><div class="cmd-code">show manager health</div><button class="copy-btn" onclick="copyCmd(this,'show manager health')">COPY</button></div>
+        </div>
+
+        <div class="cmd-section">
+          <div class="cmd-sec-title">PCI Checks</div>
+          <div class="cmd-row"><div class="cmd-label">Check InfiniBand</div><div class="cmd-code">lspci | grep -i infi</div><button class="copy-btn" onclick="copyCmd(this,'lspci | grep -i infi')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Check Non-Volatile (NVMe)</div><div class="cmd-code">lspci | grep -i non-v</div><button class="copy-btn" onclick="copyCmd(this,'lspci | grep -i non-v')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Check AMD Devices</div><div class="cmd-code">lspci | grep -i amd</div><button class="copy-btn" onclick="copyCmd(this,'lspci | grep -i amd')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Check NVIDIA Devices</div><div class="cmd-code">lspci | grep -i nvidia</div><button class="copy-btn" onclick="copyCmd(this,'lspci | grep -i nvidia')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Check Device 74a1</div><div class="cmd-code">lspci | grep -i 74a1</div><button class="copy-btn" onclick="copyCmd(this,'lspci | grep -i 74a1')">COPY</button></div>
+        </div>
+
+        <div class="cmd-section">
+          <div class="cmd-sec-title">BIOS</div>
+          <div class="cmd-row"><div class="cmd-label">Check BIOS Flavor</div><div class="cmd-code">sh sys bios config -i 2</div><button class="copy-btn" onclick="copyCmd(this,'sh sys bios config -i 2')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Change BIOS Flavor<small>Example: flavor 1.7</small></div><div class="cmd-code">set sys bios config -j 1 -n 7 -i 3</div><button class="copy-btn" onclick="copyCmd(this,'set sys bios config -j 1 -n 7 -i 3')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Force Stop at BIOS</div><div class="cmd-code">set system boot -t 4 -m 0 -p 0 -i 4</div><button class="copy-btn" onclick="copyCmd(this,'set system boot -t 4 -m 0 -p 0 -i 4')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Check BIOS Loop</div><div class="cmd-code">show sys bios code -i #</div><button class="copy-btn" onclick="copyCmd(this,'show sys bios code -i #')">COPY</button></div>
+        </div>
+
+        <div class="cmd-section">
+          <div class="cmd-sec-title">CMOS Reset</div>
+          <div class="cmd-note">Run START first - wait 30 seconds - then run END</div>
+          <div class="cmd-row"><div class="cmd-label">CMOS Reset START<small>Wait 30 seconds after this</small></div><div class="cmd-code">set system cmd -i 4 -c raw 0x30 0xe0 0xd 0x1 0x01</div><button class="copy-btn" onclick="copyCmd(this,'set system cmd -i 4 -c raw 0x30 0xe0 0xd 0x1 0x01')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">CMOS Reset END</div><div class="cmd-code">set system cmd -i 4 -c raw 0x30 0xe0 0xd 0x1 0x00</div><button class="copy-btn" onclick="copyCmd(this,'set system cmd -i 4 -c raw 0x30 0xe0 0xd 0x1 0x00')">COPY</button></div>
+        </div>
+
+        <div class="cmd-section">
+          <div class="cmd-sec-title">Sensors &amp; Logs</div>
+          <div class="cmd-row"><div class="cmd-label">Show Sensors (SDR)</div><div class="cmd-code">set sys cmd -c sdr -i 2</div><button class="copy-btn" onclick="copyCmd(this,'set sys cmd -c sdr -i 2')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Extended Sensor List</div><div class="cmd-code">set system cmd -i 2 -c sdr elist</div><button class="copy-btn" onclick="copyCmd(this,'set system cmd -i 2 -c sdr elist')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Read System Log</div><div class="cmd-code">show system log read -i #</div><button class="copy-btn" onclick="copyCmd(this,'show system log read -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Show SEL</div><div class="cmd-code">sh sys log read -i #</div><button class="copy-btn" onclick="copyCmd(this,'sh sys log read -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Clear SEL</div><div class="cmd-code">set sys log clear -i #</div><button class="copy-btn" onclick="copyCmd(this,'set sys log clear -i #')">COPY</button></div>
+        </div>
+
+        <div class="cmd-section">
+          <div class="cmd-sec-title">Health &amp; Firmware</div>
+          <div class="cmd-row"><div class="cmd-label">Memory Summary</div><div class="cmd-code">sh system health -m -i #</div><button class="copy-btn" onclick="copyCmd(this,'sh system health -m -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">PCI Summary</div><div class="cmd-code">sh system health -p -i 5</div><button class="copy-btn" onclick="copyCmd(this,'sh system health -p -i 5')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Check FW Version<small>components: bios bmc psu</small></div><div class="cmd-code">sh system [component] version -i #</div><button class="copy-btn" onclick="copyCmd(this,'sh system [component] version -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Flash BMC</div><div class="cmd-code">set system bmc update -i # -f [filename.bin]</div><button class="copy-btn" onclick="copyCmd(this,'set system bmc update -i # -f [filename.bin]')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Flash BIOS</div><div class="cmd-code">set system bios update -f [filename.bin] -i #</div><button class="copy-btn" onclick="copyCmd(this,'set system bios update -f [filename.bin] -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Reset BMC</div><div class="cmd-code">set sys cmd -i # -c raw 0x34 0x66</div><button class="copy-btn" onclick="copyCmd(this,'set sys cmd -i # -c raw 0x34 0x66')">COPY</button></div>
+        </div>
+
+        <div class="cmd-section">
+          <div class="cmd-sec-title">PSU &amp; LED</div>
+          <div class="cmd-row"><div class="cmd-label">Check PSU Version</div><div class="cmd-code">sh sys psu version -s [PSU#] -i #</div><button class="copy-btn" onclick="copyCmd(this,'sh sys psu version -s [PSU#] -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Update PSU Firmware</div><div class="cmd-code">set system psu update -i # -s [PSU#] -f [file] -t 1</div><button class="copy-btn" onclick="copyCmd(this,'set system psu update -i # -s [PSU#] -f [file] -t 1')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">LED On</div><div class="cmd-code">set sys led on -i #</div><button class="copy-btn" onclick="copyCmd(this,'set sys led on -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">LED Off</div><div class="cmd-code">set sys led off -i #</div><button class="copy-btn" onclick="copyCmd(this,'set sys led off -i #')">COPY</button></div>
+        </div>
+
+        <div class="cmd-section">
+          <div class="cmd-sec-title">FRU</div>
+          <div class="cmd-row"><div class="cmd-label">Set Chassis Part Number</div><div class="cmd-code">set system cmd -c fru edit 0 field c 0 [PartNum] -i #</div><button class="copy-btn" onclick="copyCmd(this,'set system cmd -c fru edit 0 field c 0 [PartNum] -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Set Chassis Serial</div><div class="cmd-code">set system cmd -c fru edit 0 field c 1 [Serial] -i #</div><button class="copy-btn" onclick="copyCmd(this,'set system cmd -c fru edit 0 field c 1 [Serial] -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Set Product Part Number</div><div class="cmd-code">set system cmd -c fru edit 0 field p 2 [PartNum] -i #</div><button class="copy-btn" onclick="copyCmd(this,'set system cmd -c fru edit 0 field p 2 [PartNum] -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Set Product Serial</div><div class="cmd-code">set system cmd -c fru edit 0 field p 4 [Serial] -i #</div><button class="copy-btn" onclick="copyCmd(this,'set system cmd -c fru edit 0 field p 4 [Serial] -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Set Asset Tag</div><div class="cmd-code">set system cmd -c fru edit 0 field p 5 [AssetTag] -i #</div><button class="copy-btn" onclick="copyCmd(this,'set system cmd -c fru edit 0 field p 5 [AssetTag] -i #')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Set MSF Number</div><div class="cmd-code">set system cmd -c fru edit 0 field p 8 [MSFNum] -i #</div><button class="copy-btn" onclick="copyCmd(this,'set system cmd -c fru edit 0 field p 8 [MSFNum] -i #')">COPY</button></div>
+        </div>
+
+        <div class="cmd-section">
+          <div class="cmd-sec-title">Recovery</div>
+          <div class="cmd-note">After Critical Failure Recovery - re-run VFDK after 5 minutes</div>
+          <div class="cmd-row"><div class="cmd-label">Critical Failure Recovery<small>Re-run VFDK after 5 min</small></div><div class="cmd-code">set system cmd -i blade -c raw 0x34 0x66</div><button class="copy-btn" onclick="copyCmd(this,'set system cmd -i blade -c raw 0x34 0x66')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Force Test Start</div><div class="cmd-code">set system cmd -i 2 -c raw 0x34 0x93 0x1 0x0</div><button class="copy-btn" onclick="copyCmd(this,'set system cmd -i 2 -c raw 0x34 0x93 0x1 0x0')">COPY</button></div>
+          <div class="cmd-row"><div class="cmd-label">Reset WinPE Testing<small>Run as Administrator</small></div><div class="cmd-code">D:\onsite\pxe\target_scripts\field_winpe_switch.cmd</div><button class="copy-btn" onclick="copyCmd(this,'D:\\onsite\\pxe\\target_scripts\\field_winpe_switch.cmd')">COPY</button></div>
+        </div>
+
+      </div><!-- end tabPaneCmds -->
+    </div><!-- end search-card -->
+
+    <!-- RESULT CARD -->
+    <div class="result-card" id="resultCard">
+      <div class="result-head">
+        <span class="result-label">RESOLUTION GUIDE</span>
+        <span class="result-query" id="resultQuery"></span>
+        <button class="export-btn" onclick="exportTxt()">EXPORT TXT</button>
+      </div>
+      <div class="result-body" id="resultBody"></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="history-section" id="historySection" style="display:none">
+      <div class="history-title">RECENT SEARCHES</div>
+      <div id="historyList"></div>
+    </div>
+
+  </div><!-- end page-search -->
+
+  <!-- ===== PAGE: TICKET LOGGER ===== -->
+  <div class="page" id="page-logger">
+    <div class="form-card">
+      <h3 class="cl">LOG A TICKET ACTION</h3>
+      <div class="form-row">
+        <div class="form-group"><label>TICKET NUMBER</label><input id="logTicket" type="text" placeholder="e.g. INC0012345"/></div>
+        <div class="form-group"><label>FAULT CODE</label><input id="logFc" type="text" placeholder="e.g. 62440"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>SYSTEM</label>
+          <select id="logProg">
+            <option value="Mariner">Mariner Gen7 - A100</option>
+            <option value="Venera">Venera Gen9 - MI300X</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label>STATUS</label>
+          <select id="logStatus">
+            <option value="resolved">Resolved</option>
+            <option value="escalated">Escalated to L2</option>
+            <option value="ongoing">Ongoing</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label>ACTIONS TAKEN</label><textarea id="logActions" placeholder="e.g. Replaced FPGA, ran partial VFDK, verified linklights..."></textarea></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label>NOTES / OUTCOME</label><textarea id="logNotes" placeholder="e.g. Issue resolved after FPGA replacement. VFDK clean."></textarea></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-save" onclick="saveLog()">SAVE LOG</button>
+        <button class="btn-csv" onclick="exportLogsCSV()">EXPORT CSV</button>
+      </div>
+    </div>
+    <div class="entries-list" id="logEntries"></div>
+  </div>
+
+  <!-- ===== PAGE: ESCALATION TRACKER ===== -->
+  <div class="page" id="page-esc">
+    <div class="form-card">
+      <h3 class="ce">LOG AN ESCALATION TO L2</h3>
+      <div class="form-row">
+        <div class="form-group"><label>TICKET NUMBER</label><input id="escTicket" type="text" placeholder="e.g. INC0012345"/></div>
+        <div class="form-group"><label>FAULT CODE</label><input id="escFc" type="text" placeholder="e.g. 62440"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>ESCALATION REASON</label>
+          <select id="escReason">
+            <option value="3rd repeat same FC - VFDK clean (Rule 3)">3rd repeat same FC - VFDK clean (Rule 3)</option>
+            <option value="FPGA already replaced once - fault persists">FPGA already replaced once - fault persists</option>
+            <option value="UBB8 replaced and logged in SharePoint - fault persists">UBB8 replaced and logged in SharePoint - fault persists</option>
+            <option value="No POST - unresolved after SOP">No POST - unresolved after SOP</option>
+            <option value="VFDK NTF - No Trouble Found">VFDK NTF - No Trouble Found</option>
+            <option value="Network device - PM escalation required">Network device - PM escalation required</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label>ESCALATED TO</label>
+          <select id="escTo">
+            <option value="L2">L2</option>
+            <option value="L2 and PM Team">L2 and PM Team</option>
+            <option value="PM Directly">PM Directly</option>
+            <option value="ServiceOps">ServiceOps</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label>ADDITIONAL DETAILS</label><textarea id="escDetails" placeholder="What was tried, what failed, any relevant log findings..."></textarea></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-save esc" onclick="saveEsc()">LOG ESCALATION</button>
+        <button class="btn-csv" onclick="exportEscCSV()">EXPORT CSV</button>
+      </div>
+    </div>
+    <div class="entries-list" id="escEntries"></div>
+  </div>
+
+  <!-- ===== PAGE: FC STATS ===== -->
+  <div class="page" id="page-stats">
+    <div class="chart-card">
+      <div class="chart-title">MOST SEARCHED FAULT CODES</div>
+      <div id="searchChart"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">DATABASE BREAKDOWN</div>
+      <div id="dbChart"></div>
+    </div>
+  </div>
+
+</div><!-- end wrap -->
+
+<div class="footer">Created by Yaksh Patel</div>
+
+<script>
+// ============================================================
+// FAULT CODE DATABASE
+// ============================================================
+var FCDB = [
+  {prog:"Mariner",fc:"60071",desc:"Extended Diagnostics Stress Test Config Validation for Storage nodes",a:"Check for Post and PXE. If node does not post or PXE, use No Post SOP. If system Posts, run VFDK.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"60077",desc:"No POST output over serial channel after power cycle, no DHCP/PXE request seen.",a:"Check for Post and PXE. If node does not post or PXE, use No Post SOP. If system Posts, run VFDK.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"60082",desc:"Blade seems to boot up and server saw DHCP/PXE but there is no POST output.",a:"Check for Post and PXE. If node does not post or PXE, use No Post SOP. If system Posts, run VFDK.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"60086",desc:"Blade level wire check - powering on blade had no effect on network port link status.",a:"Check all cable connections (ensure all are connected properly)",b:"Check for Post and PXE. Use No Post SOP if needed.",c:"Run VFDK"},
+  {prog:"Mariner",fc:"60088",desc:"POST output over serial was garbage characters. Blade did complete POST since server saw DHCP/PXE.",a:"Check for Post and PXE. If node does not post or PXE, use No Post SOP. If system Posts, run VFDK.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"60708",desc:"MQE: GPU General Investigation Requested",a:"Run VFDK",b:"Escalate to L2",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62012",desc:"Drive Capacity too low",a:"Replace failed drive per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62027",desc:"CSIDIAG: Bad Disk via Windows Event Log",a:"Run VFDK",b:"Escalate to L2",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62034",desc:"Disk Failed IO Test",a:"Replace failed drive per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62038",desc:"Disk failure predicted by proactive rules",a:"Replace failed drive per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62040",desc:"Disk failure IO errors timeout data miscompare detected by reactive rules.",a:"Run VFDK",b:"Escalate to L2",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62046",desc:"SSD in FW Protection Mode",a:"Replace failed drive per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62047",desc:"SSD in READ ONLY mode",a:"Replace failed drive per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62050",desc:"SSD Drive Media Failure (Erase Count Exceeded)",a:"Replace failed drive per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62052",desc:"SSD - Internal Capacitor Failure",a:"Replace failed drive per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62099",desc:"Less physical drives detected standard signal repair",a:"Replace failed drive per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62155",desc:"Replace Motherboard (HMSTrap fault source) - for Lazy VM Excursion",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62253",desc:"Uncorrectable Read/Write errors - Hard Errors",a:"Replace Dimm per GDCO (DO NOT RESEAT)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62254",desc:"Correctable ECC Read/Write errors (Soft Errors). Logging limit reached.",a:"Replace failed DIMM per GDCO (do NOT move or reseat even if GDCO says to reseat)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62271",desc:"Total Detected Memory Size Mismatch",a:"Check SDR. If more than 2 DIMMs missing run VFDK. If 2 or less missing replace dimms.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62370",desc:"AMD Processor Error (CPU Replacement)",a:"Replace CPU. Run partial VFDK after replacement for FW updates.",b:"Replace Motherboard. Run partial VFDK after replacement for FW and FRU updates.",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62417",desc:"CSIDIAG: No Match Count on NIC",a:"Replace Failed NIC per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62418",desc:"NIC PCIe Link Training Error - Negotiated Link Width is below minimum",a:"Reseat the Occulink cable on BOTH ends, verify by FPGA linklights.",b:"Replace Occulink cable, verify by FPGA linklights.",c:"Replace FPGA (DO NOT repeat FPGA replacement - escalate to L2/ServiceOps)"},
+  {prog:"Mariner",fc:"62440",desc:"Failed to clear FPGA CRC Errors/SEUs",a:"Replace FPGA (DO NOT repeat FPGA replacement - escalate to L2/ServiceOps)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62441",desc:"Failed to clear link training errors",a:"Reseat the Occulink cable on BOTH ends, verify by FPGA linklights.",b:"Replace Occulink cable, verify by FPGA linklights.",c:"Replace FPGA (DO NOT repeat FPGA replacement - escalate to L2/ServiceOps)"},
+  {prog:"Mariner",fc:"62443",desc:"DRAM PLL lock failure (HMSTrap fault source)",a:"Replace FPGA (DO NOT repeat FPGA replacement - escalate to L2/ServiceOps)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62474",desc:"Critical Interrupt - Bus Uncorrectable Error PCIe Express Error on PCIe NVMe",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62606",desc:"Fault with AMD CPU found by HHS",a:"Replace CPU. Run partial VFDK after replacement for FW updates.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62635",desc:"PSU Failed",a:"Replace failed PSU per GDCO.",b:"Replace PDB. Run partial VFDK after replacement for FW updates.",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62652",desc:"Blade Fan Failed (SEL)",a:"If GDCO shows two sequential 40mm fans failed, Replace PDB. Run partial VFDK after replacement for FW updates.",b:"Replace failed fan",c:"Replace Harness Cable"},
+  {prog:"Mariner",fc:"62660",desc:"Missing GPU Module",a:"Run VFDK - Likely Single GPU Replacement. Run partial VFDK after replacement for FW updates.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62665",desc:"GPU Module - PCIe Link Width Below the Threshold",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62685",desc:"GPU Module - Shutdown Temperature Reached",a:"Check fans and Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62689",desc:"CSIDIAG: GPU Module - Power Consumption exceeded maximum allowed",a:"VFDK Run Required",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62696",desc:"CSIDIAG: No GPU Detected",a:"Run VFDK - Likely GPU Tray. Run partial VFDK after replacement for FW updates.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62698",desc:"CSIDIAG: GPU Memory Bandwidth Failed",a:"Run VFDK - Likely Single GPU Replacement. Run partial VFDK after replacement for FW updates.",b:"Replace SWB. Run partial VFDK after replacement for FW updates.",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62700",desc:"CSIDIAG: GPU Board Hardware Fault",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62701",desc:"CSIDIAG: Switch Board Not Detected",a:"Run VFDK. Repair likely PDB or SWB. Run partial VFDK after replacement for FW updates.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62702",desc:"CSIDIAG: GPU Module - Row Remapping Failure Occurred",a:"Open GDCO ticket, go to device logs (Rule 5). Download CSI_GPU_SMI_raw logs, search GPU SN via Ctrl+F. Check Remapping Failure Occurred under Remapped Rows. If Yes: upload log to WOT, replace GPU, run partial FW validation.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62705",desc:"CSIDIAG: GPU Module - GPU SRAM Uncorrectable Error",a:"Open GDCO ticket, go to device logs (Rule 5). Download CSI_GPU_SMI_raw logs, search GPU SN via Ctrl+F. Check SRAM Threshold Exceeded under Ecc Errors. If Yes: upload log to WOT, replace GPU, run partial FW validation.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62708",desc:"HPC: GPU General Investigation Requested",a:"Run VFDK - Likely GPU Tray or Single GPU. Run partial VFDK after replacement for FW updates.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62710",desc:"FPGA DDR double bit ECC errors (HMSTrap fault source)",a:"Replace FPGA (DO NOT repeat FPGA replacement - escalate to L2/ServiceOps)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62771",desc:"CRC Errors found in long cable",a:"Reseat DAC Cable",b:"Replace DAC Cable",c:"Run VFDK"},
+  {prog:"Mariner",fc:"62786",desc:"HCA Card general investigation",a:"Swap IB Cable Positions",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"63001",desc:"Cable from TOR to host reporting as defective, replacement requested.",a:"Reseat DAC Cable",b:"Replace DAC Cable",c:"Run VFDK"},
+  {prog:"Mariner",fc:"65267",desc:"Need to replace SWB due to VR issue",a:"Run VFDK to validate if SWB is true Old TI. If confirmed and SWB not already reworked, replace SWB. Run partial VFDK after replacement.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"65595",desc:"Fan fault investigation",a:"Replace Fans failing in GDCO",b:"Replace PDB. Run partial VFDK after replacement for FW updates.",c:"Run VFDK"},
+  {prog:"Mariner",fc:"65618",desc:"CSIDIAG_INFRA: Motherboard is dead",a:"Replace Motherboard. Run partial VFDK after replacement for FW and FRU updates.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"65657",desc:"Cannot retrieve FPGA information via RM",a:"Replace FPGA (DO NOT repeat FPGA replacement - escalate to L2/ServiceOps)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"65674",desc:"FPGA to TOR switch cable disconnected",a:"Reseat or Replace DAC cable",b:"Replace FPGA",c:"Run VFDK"},
+  {prog:"Mariner",fc:"67923",desc:"GPU Module - Failure detected by XID errors (XID 13, 31, 109 and 119)",a:"Run VFDK - Likely Single GPU Replacement. Run partial VFDK after replacement for FW updates.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Mariner",fc:"121004",desc:"Device: General Investigation",a:"Follow GDCO action (DO NOT run VFDK)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"60062",desc:"Extended Diagnostics Stress Test Config Validation Requested",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"60063",desc:"Exceptional Diagnostics Requested",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"60071",desc:"Extended Diagnostics Stress Test Config Validation for Storage nodes",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"60077",desc:"No POST output over serial channel after power cycle, no DHCP/PXE request seen.",a:"Check for Post and PXE. If node does not post or PXE, use No Post SOP. If system Posts, run VFDK.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"60082",desc:"Blade seems to boot up and server saw DHCP/PXE but no POST output.",a:"Check for Post and PXE. If node does not post or PXE, use No Post SOP. If system Posts, run VFDK.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"60143",desc:"BladeFailedVerification",a:"AC cycle node and perform basic POST and HW checks",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"60170",desc:"Blade BIOS/FW Revision incorrect. Update BIOS version to LKG version.",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"60708",desc:"Batch Repair: GPU Module",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"62047",desc:"SSD in READ ONLY mode",a:"Replace Drive from GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62099",desc:"Less physical drives detected standard signal repair",a:"Replace M.2 or E1.S per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62155",desc:"Replace Motherboard (HMSTrap fault source) - for Lazy VM Excursion",a:"Run VFDK to check for FW updates",b:"Replace HPM. Run partial VFDK after replacement for FW and FRU updates.",c:"Run VFDK"},
+  {prog:"Venera",fc:"62254",desc:"Correctable ECC Read/Write errors (Soft Errors). Logging limit reached.",a:"Replace Dimm per GDCO (DO NOT RESEAT)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62255",desc:"DIMM Move required to re-train unusable DIMM",a:"Replace Dimm per GDCO (DO NOT RESEAT)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62271",desc:"Total Detected Memory Size Mismatch",a:"Check SDR. If more than 2 DIMMs missing run VFDK. If 2 or less missing replace dimms.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62282",desc:"Uber DIMM replacement (SEL)",a:"Replace Dimm per GDCO (DO NOT RESEAT)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62372",desc:"Memory Latency Checker (MLC) Diagnostics failed. CPU-UPI lane failure detected.",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62472",desc:"Critical Interrupt - Bus Correctable Error Logging Limit Reached PCIe NVMe",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62618",desc:"CPU Failure (All other failures send via HHS)",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62635",desc:"PSU Failed",a:"Check and replace failed PSU Per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62652",desc:"Blade Fan Failed (SEL)",a:"Replace failed fan per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62660",desc:"Missing GPU Module / Batch Repair: GPU Module",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"62665",desc:"GPU Module PCIE Linkwidth Below Threshold",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"62685",desc:"GPU Module Shutdown Temperature Reached",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"62691",desc:"GPU Module Low Performance",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"62696",desc:"CSIDIAG: No GPU Detected / Batch Repair: GPU Module",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"62698",desc:"CSIDIAG: GPU Memory Bandwidth Failed",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"62700",desc:"CSIDIAG: GPU Board Hardware Fault",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"62708",desc:"HPC: GPU General Investigation Requested",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"62772",desc:"CRC Errors found in short cable",a:"Replace DAC Cable",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62774",desc:"Gemini Y cable issue",a:"Reseat Y Cable",b:"Replace Y Cable",c:"Replace FPGA (DO NOT replace FPGA twice)"},
+  {prog:"Venera",fc:"62775",desc:"Cable failures due to EEPROM issue generated by HMSTrap",a:"Replace AEC Y Cable",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62786",desc:"HCA Card general investigation",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62787",desc:"Missing CX7 Module - 1 strike policy triggered via CSI Diagnostics",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"62846",desc:"Overlake SoC FPGA NIC deskew errors",a:"Reseat or Replace DAC cable",b:"Replace FPGA (DO NOT replace FPGA twice)",c:"Run VFDK"},
+  {prog:"Venera",fc:"63103",desc:"Unknown",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"63110",desc:"Overlake DRAM Defect, Replace FPGA Card",a:"Replace FPGA (DO NOT repeat FPGA replacement - escalate to L2/ServiceOps)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"63122",desc:"Overlake SoC BMC link state down",a:"Reseat Copper Cable between BMC port and Management",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"63694",desc:"Mux/Y-cable of Dual TOR is miswired.",a:"Visually inspect cabling, reseat Y Cable",b:"VFDK Run Required",c:"Run VFDK"},
+  {prog:"Venera",fc:"65575",desc:"Relay HW faults reported by PSU firmware",a:"Check and replace failed PSU Per GDCO",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"65657",desc:"Cannot retrieve FPGA information via RM",a:"Replace FPGA (DO NOT repeat FPGA replacement - escalate to L2/ServiceOps)",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"65662",desc:"FPGA AEC Y-Cable to dual-TOR switch is disconnected",a:"Reseat Cable between TOR and FPGA",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"65764",desc:"CSIDIAG_INFRA: GPU VR Failure",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"66402",desc:"GPU ERoT Fatal - Abnormal State Change",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"66501",desc:"PCIe Fatal SLD GPU Persistent Fault",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"66502",desc:"PCIe Fatal SLD GPU Transient Fault",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"66503",desc:"PCIe Fatal SLD - Defect - False THERM OVERT",a:"Run VFDK - Likely UBB8. Run partial VFDK after replacement for FW updates.",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"67001",desc:"CX7 Lazy PCIE Protocol Link - 3 strike policy triggered via (STAR JSON)",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"67002",desc:"CX7 PCIE Link Down",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"67100",desc:"PCIe Fatal SLD HPM Transient Fault",a:"Run VFDK",b:"Run VFDK",c:"Run VFDK"},
+  {prog:"Venera",fc:"67101",desc:"RAS Device Internal Fatal UE for MI300X",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67103",desc:"RAS Device Internal Fatal UE for MI300X",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67105",desc:"RAS Device Internal Fatal UE for MI300X",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67901",desc:"GPU HBM Screen Failed",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67903",desc:"OAM SDC Silent Data Corruption Screening Failed",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67914",desc:"OAM PGOOD Failure",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"Replace GPU per GDCO",c:"Run VFDK"},
+  {prog:"Venera",fc:"67917",desc:"GPU Module PCIE Bandwidth Low Performance",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67919",desc:"Batch Repair: GPU Module",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67922",desc:"GPU Module Unknown Boottime Error",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67950",desc:"GPU VR Failure",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67952",desc:"GPU Throttle due to Increasing Temperature",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67962",desc:"Bad GPU Baseboard Detected",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67990",desc:"GPU Baseboard Not Detected",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"67992",desc:"GPU Baseboard VR Failure",a:"Check the date code. If prior to 2519, replace UBB8 and run FULL validation.",b:"If UBB8 already replaced and logged in SharePoint, run VFDK and escalate L2.",c:"Run VFDK"},
+  {prog:"Venera",fc:"121008",desc:"Device: Investigate Power Supply Issue",a:"Visual Check to ensure PSU is offline. Replace.",b:"Replace PSU Using HotSwap Protocols per SA-xxx",c:"Run VFDK"},
+  {prog:"Venera",fc:"122007",desc:"Network Device: General Investigation Support",a:"Escalate to your PM",b:"Escalate to your PM",c:"Escalate to your PM"},
+  {prog:"Monitoring",fc:"62474",desc:"Critical Interrupt Bus Uncorrectable Error PCIe NVMe (Mariner)",a:"Run VFDK",b:"",c:""},
+  {prog:"Monitoring",fc:"62700",desc:"CSIDIAG: GPU Board Hardware Fault (Mariner)",a:"Run VFDK",b:"",c:""},
+  {prog:"Monitoring",fc:"62698",desc:"CSIDIAG: GPU Memory Bandwidth Failed (Mariner)",a:"Run VFDK - Likely Single GPU Replacement. Run partial VFDK after replacement.",b:"Replace SWB. Run partial VFDK after replacement.",c:""},
+  {prog:"Monitoring",fc:"62440",desc:"Failed to clear FPGA CRC Errors/SEUs (Mariner)",a:"Run VFDK - Repair likely FPGA",b:"",c:""},
+  {prog:"Monitoring",fc:"65657",desc:"Cannot retrieve FPGA information via RM (Venera)",a:"Run VFDK",b:"",c:""}
+];
+
+// ============================================================
+// STATE
+// ============================================================
+var activeSku = "all";
+var activeTab = "code";
+var searchHistory = [];
+var searchFreq = {};
+var ticketLogs = [];
+var escalations = [];
+
+// ============================================================
+// INIT
+// ============================================================
+window.onload = function() {
+  try { searchHistory = JSON.parse(localStorage.getItem("dc_history") || "[]"); } catch(e) {}
+  try { searchFreq    = JSON.parse(localStorage.getItem("dc_freq")    || "{}"); } catch(e) {}
+  try { ticketLogs    = JSON.parse(localStorage.getItem("dc_logs")    || "[]"); } catch(e) {}
+  try { escalations   = JSON.parse(localStorage.getItem("dc_escs")    || "[]"); } catch(e) {}
+  try {
+    if (localStorage.getItem("dc_theme") === "light") {
+      document.body.classList.add("light");
+      document.getElementById("themeBtn").textContent = "DARK";
+    }
+  } catch(e) {}
+  renderStats();
+  renderHistory();
+  renderLogs();
+  renderEscs();
+
+  // Enter key on FC input
+  document.getElementById("fcInput").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") { hideAC(); doSearch(); }
+  });
+
+  // FC input autocomplete
+  document.getElementById("fcInput").addEventListener("input", function() {
+    var val = this.value.trim().toLowerCase();
+    var box = document.getElementById("acBox");
+    if (!val || val.length < 2) { box.style.display = "none"; return; }
+    var results = getDB().filter(function(r) {
+      return r.fc.indexOf(val) !== -1 || r.desc.toLowerCase().indexOf(val) !== -1;
+    }).slice(0, 8);
+    if (!results.length) { box.style.display = "none"; return; }
+    var html = "";
+    for (var i = 0; i < results.length; i++) {
+      var r = results[i];
+      html += '<div class="ac-item" onclick="fillCode(\'' + r.fc + '\')">';
+      html += '<span class="ac-fc">' + r.fc + '</span>';
+      html += '<span class="ac-desc">' + r.desc.substring(0, 60) + '</span>';
+      html += '<span class="ac-prog ' + r.prog.toLowerCase() + '">' + r.prog + '</span>';
+      html += '</div>';
+    }
+    box.innerHTML = html;
+    box.style.display = "block";
+  });
+
+  document.addEventListener("click", function(e) {
+    if (!e.target.closest(".inp-wrap")) hideAC();
+  });
+};
+
+function hideAC() {
+  document.getElementById("acBox").style.display = "none";
+}
+
+// ============================================================
+// THEME
+// ============================================================
+function toggleTheme() {
+  document.body.classList.toggle("light");
+  var isLight = document.body.classList.contains("light");
+  document.getElementById("themeBtn").textContent = isLight ? "DARK" : "LIGHT";
+  try { localStorage.setItem("dc_theme", isLight ? "light" : "dark"); } catch(e) {}
+}
+
+// ============================================================
+// PAGE NAVIGATION
+// ============================================================
+function showPage(name, btn) {
+  var pages = ["search","logger","esc","stats"];
+  var btns  = ["navSearch","navLogger","navEsc","navStats"];
+  for (var i = 0; i < pages.length; i++) {
+    var p = document.getElementById("page-" + pages[i]);
+    var b = document.getElementById(btns[i]);
+    if (p) p.classList.remove("active");
+    if (b) b.classList.remove("active");
+  }
+  var pg = document.getElementById("page-" + name);
+  if (pg) pg.classList.add("active");
+  if (btn) btn.classList.add("active");
+  if (name === "stats") renderCharts();
+}
+
+// ============================================================
+// SKU FILTER
+// ============================================================
+function setSku(sku, btn) {
+  activeSku = sku;
+  var btns = document.querySelectorAll(".sku-btn");
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove("active");
+  if (btn) btn.classList.add("active");
+}
+
+function getDB() {
+  if (activeSku === "all") return FCDB;
+  return FCDB.filter(function(r) { return r.prog === activeSku; });
+}
+
+// ============================================================
+// TAB SWITCHING (inside search card)
+// ============================================================
+function switchTab(tab, btn) {
+  activeTab = tab;
+  var tabs = document.querySelectorAll(".tab");
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
+  if (btn) btn.classList.add("active");
+  document.getElementById("tabPaneCode").style.display = (tab === "code") ? "block" : "none";
+  document.getElementById("tabPaneDesc").style.display = (tab === "desc") ? "block" : "none";
+  document.getElementById("tabPaneCmds").style.display = (tab === "cmds") ? "block" : "none";
+}
+
+// ============================================================
+// FILL CODE
+// ============================================================
+function fillCode(code) {
+  document.getElementById("fcInput").value = code;
+  hideAC();
+  activeTab = "code";
+  var tabs = document.querySelectorAll(".tab");
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
+  document.getElementById("tabCode").classList.add("active");
+  document.getElementById("tabPaneCode").style.display = "block";
+  document.getElementById("tabPaneDesc").style.display = "none";
+  document.getElementById("tabPaneCmds").style.display = "none";
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+function doSearch() {
+  var query = "";
+  if (activeTab === "code") {
+    query = document.getElementById("fcInput").value.trim();
+  } else {
+    query = document.getElementById("descInput").value.trim();
+  }
+  if (!query) { alert("Please enter a fault code or describe your issue."); return; }
+
+  hideAC();
+  document.getElementById("resultQuery").textContent = query;
+
+  var matches = [];
+  if (activeTab === "code") {
+    matches = getDB().filter(function(r) {
+      return r.fc === query || r.fc.indexOf(query) !== -1;
+    });
+  } else {
+    var words = query.toLowerCase().split(" ").filter(function(w) { return w.length > 2; });
+    matches = getDB().filter(function(r) {
+      var hay = (r.fc + " " + r.desc + " " + r.a + " " + r.b + " " + r.c).toLowerCase();
+      for (var i = 0; i < words.length; i++) {
+        if (hay.indexOf(words[i]) !== -1) return true;
+      }
+      return false;
+    }).slice(0, 5);
+  }
+
+  renderResult(query, matches);
+  addHistory(query);
+  trackFreq(query);
+  renderStats();
+}
+
+// ============================================================
+// RENDER RESULT
+// ============================================================
+function renderResult(query, matches) {
+  var html = "";
+
+  // Confidence badge
+  var conf, confClass;
+  if (activeTab === "code" && matches.length > 0) {
+    conf = "EXACT FC MATCH - High Confidence";
+    confClass = "conf-high";
+  } else if (activeTab === "code" && matches.length === 0) {
+    conf = "FC NOT IN DATABASE - VFDK Required per TBS Rules";
+    confClass = "conf-med";
+  } else {
+    conf = "KEYWORD MATCH - Verify FC with GDCO";
+    confClass = "conf-med";
+  }
+  html += '<div class="conf-badge ' + confClass + '">' + conf + '</div>';
+
+  if (matches.length > 0) {
+    for (var i = 0; i < matches.length; i++) {
+      var r = matches[i];
+      html += '<div class="fc-match fadein">';
+      html += '<div class="fc-match-head">';
+      html += '<span class="fc-num">FC ' + r.fc + '</span>';
+      html += '<span class="fc-desc">' + r.desc + '</span>';
+      html += '<span class="prog-badge ' + r.prog.toLowerCase() + '">' + r.prog + '</span>';
+      html += '</div>';
+      html += '<div class="actions-grid">';
+      if (r.a) {
+        html += '<div class="action-block action-a">';
+        html += '<div class="action-label">ACTION A - 1ST TICKET</div>';
+        html += '<div class="action-text">' + boldKeywords(r.a) + '</div>';
+        html += '</div>';
+      }
+      if (r.b) {
+        html += '<div class="action-block action-b">';
+        html += '<div class="action-label">ACTION B - 2ND REPEAT</div>';
+        html += '<div class="action-text">' + boldKeywords(r.b) + '</div>';
+        html += '</div>';
+      }
+      if (r.c) {
+        html += '<div class="action-block action-c">';
+        html += '<div class="action-label">ACTION C - 3RD REPEAT</div>';
+        html += '<div class="action-text">' + boldKeywords(r.c) + '</div>';
+        html += '</div>';
+      }
+      html += '</div></div>';
+    }
+  } else if (activeTab === "code") {
+    html += '<div class="no-match">';
+    html += '<div class="no-match-title">FAULT CODE NOT IN DATABASE</div>';
+    html += '<p>FC "' + query + '" not found in local guide. Per TBS rules - if no action available, VFDK is required.</p>';
+    html += '</div>';
+  } else {
+    html += '<div class="no-match">';
+    html += '<div class="no-match-title">NO RESULTS FOUND</div>';
+    html += '<p>No fault codes matched your description. Try searching by FC number directly.</p>';
+    html += '</div>';
+  }
+
+  document.getElementById("resultBody").innerHTML = html;
+  document.getElementById("resultCard").classList.add("show");
+  document.getElementById("resultCard").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function boldKeywords(text) {
+  var kw = ["DO NOT","Run VFDK","Run partial VFDK","Run FULL","Replace","Reseat","Escalate","VFDK Run Required","escalate to L2"];
+  for (var i = 0; i < kw.length; i++) {
+    text = text.split(kw[i]).join("<strong>" + kw[i] + "</strong>");
+  }
+  return text;
+}
+
+// ============================================================
+// COPY COMMAND
+// ============================================================
+function copyCmd(btn, text) {
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = "COPIED";
+    btn.classList.add("copied");
+    setTimeout(function() { btn.textContent = "COPY"; btn.classList.remove("copied"); }, 1500);
+  }).catch(function() {
+    btn.textContent = "FAIL";
+    setTimeout(function() { btn.textContent = "COPY"; }, 1500);
+  });
+}
+
+// ============================================================
+// EXPORT TXT
+// ============================================================
+function exportTxt() {
+  var body = document.getElementById("resultBody");
+  if (!body || !body.innerText.trim()) { alert("No result to export. Search a fault code first."); return; }
+  var text = "DC TROUBLESHOOT RESOLUTION\n" + new Date().toLocaleString() + "\n\n" + body.innerText;
+  var blob = new Blob([text], { type: "text/plain" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "resolution.txt";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ============================================================
+// SEARCH HISTORY
+// ============================================================
+function addHistory(query) {
+  var now = new Date();
+  var time = now.getHours().toString().padStart(2,"0") + ":" + now.getMinutes().toString().padStart(2,"0");
+  searchHistory.unshift({ query: query, tab: activeTab, time: time });
+  if (searchHistory.length > 10) searchHistory.pop();
+  try { localStorage.setItem("dc_history", JSON.stringify(searchHistory)); } catch(e) {}
+  renderHistory();
+}
+
+function renderHistory() {
+  var section = document.getElementById("historySection");
+  var list = document.getElementById("historyList");
+  if (!searchHistory.length) { section.style.display = "none"; return; }
+  section.style.display = "block";
+  var html = "";
+  for (var i = 0; i < searchHistory.length; i++) {
+    var h = searchHistory[i];
+    var safeQ = h.query.replace(/'/g, "\\'");
+    html += '<div class="hist-item" onclick="rerunSearch(\'' + safeQ + '\',\'' + h.tab + '\')">';
+    html += '<span class="hist-type">' + (h.tab === "code" ? "FC" : "DESC") + '</span>';
+    html += '<span class="hist-q">' + h.query + '</span>';
+    html += '<span class="hist-time">' + h.time + '</span>';
+    html += '</div>';
+  }
+  list.innerHTML = html;
+}
+
+function rerunSearch(query, tab) {
+  if (tab === "code") {
+    document.getElementById("fcInput").value = query;
+    fillCode(query);
+  } else {
+    document.getElementById("descInput").value = query;
+    activeTab = "desc";
+    var tabs = document.querySelectorAll(".tab");
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
+    document.getElementById("tabDesc").classList.add("active");
+    document.getElementById("tabPaneCode").style.display = "none";
+    document.getElementById("tabPaneDesc").style.display = "block";
+    document.getElementById("tabPaneCmds").style.display = "none";
+  }
+  doSearch();
+}
+
+// ============================================================
+// STATS BAR
+// ============================================================
+function renderStats() {
+  var total = FCDB.length;
+  var mar = FCDB.filter(function(r){ return r.prog === "Mariner"; }).length;
+  var ven = FCDB.filter(function(r){ return r.prog === "Venera"; }).length;
+  var mon = FCDB.filter(function(r){ return r.prog === "Monitoring"; }).length;
+  var searches = 0;
+  for (var k in searchFreq) searches += searchFreq[k];
+  document.getElementById("statsBar").innerHTML =
+    '<div class="stat-chip"><div class="stat-val">' + total + '</div><div class="stat-key">TOTAL FCs</div></div>' +
+    '<div class="stat-chip"><div class="stat-val m">' + mar + '</div><div class="stat-key">MARINER</div></div>' +
+    '<div class="stat-chip"><div class="stat-val v">' + ven + '</div><div class="stat-key">VENERA</div></div>' +
+    '<div class="stat-chip"><div class="stat-val o">' + mon + '</div><div class="stat-key">MONITORING</div></div>' +
+    '<div class="stat-chip"><div class="stat-val">' + searches + '</div><div class="stat-key">SEARCHES</div></div>';
+}
+
+function trackFreq(query) {
+  var key = query.toUpperCase().trim();
+  searchFreq[key] = (searchFreq[key] || 0) + 1;
+  try { localStorage.setItem("dc_freq", JSON.stringify(searchFreq)); } catch(e) {}
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function renderCharts() {
+  // Search frequency
+  var freqEl = document.getElementById("searchChart");
+  var entries = [];
+  for (var k in searchFreq) entries.push([k, searchFreq[k]]);
+  entries.sort(function(a,b){ return b[1]-a[1]; });
+  entries = entries.slice(0, 10);
+
+  if (!entries.length) {
+    freqEl.innerHTML = '<div class="empty-state">No searches yet. Search fault codes to see frequency here.</div>';
+  } else {
+    var max = entries[0][1];
+    var html = "";
+    for (var i = 0; i < entries.length; i++) {
+      var pct = Math.round((entries[i][1] / max) * 100);
+      html += '<div class="bar-row">';
+      html += '<div class="bar-fc">' + entries[i][0] + '</div>';
+      html += '<div class="bar-track"><div class="bar-fill bs" style="width:' + pct + '%">' + entries[i][1] + 'x</div></div>';
+      html += '<div class="bar-count">' + entries[i][1] + '</div>';
+      html += '</div>';
+    }
+    freqEl.innerHTML = html;
+  }
+
+  // DB breakdown
+  var dbEl = document.getElementById("dbChart");
+  var groups = [
+    { label: "Mariner Gen7", cls: "bm", count: FCDB.filter(function(r){ return r.prog==="Mariner"; }).length },
+    { label: "Venera Gen9",  cls: "bv", count: FCDB.filter(function(r){ return r.prog==="Venera"; }).length },
+    { label: "Monitoring",   cls: "bo", count: FCDB.filter(function(r){ return r.prog==="Monitoring"; }).length }
+  ];
+  var maxG = 0;
+  for (var j = 0; j < groups.length; j++) if (groups[j].count > maxG) maxG = groups[j].count;
+  var dbHtml = "";
+  for (var j = 0; j < groups.length; j++) {
+    var pct2 = Math.round((groups[j].count / maxG) * 100);
+    dbHtml += '<div class="bar-row">';
+    dbHtml += '<div class="bar-fc" style="min-width:100px;font-size:10px">' + groups[j].label + '</div>';
+    dbHtml += '<div class="bar-track"><div class="bar-fill ' + groups[j].cls + '" style="width:' + pct2 + '%">' + groups[j].count + '</div></div>';
+    dbHtml += '<div class="bar-count">' + groups[j].count + '</div>';
+    dbHtml += '</div>';
+  }
+  dbEl.innerHTML = dbHtml;
+}
+
+// ============================================================
+// TICKET LOGGER
+// ============================================================
+function saveLog() {
+  var fc      = document.getElementById("logFc").value.trim();
+  var actions = document.getElementById("logActions").value.trim();
+  if (!fc || !actions) { alert("Please fill in at least Fault Code and Actions Taken."); return; }
+  var entry = {
+    id:      Date.now(),
+    ticket:  document.getElementById("logTicket").value.trim(),
+    fc:      fc,
+    prog:    document.getElementById("logProg").value,
+    status:  document.getElementById("logStatus").value,
+    actions: actions,
+    notes:   document.getElementById("logNotes").value.trim(),
+    time:    new Date().toLocaleString()
+  };
+  ticketLogs.unshift(entry);
+  try { localStorage.setItem("dc_logs", JSON.stringify(ticketLogs)); } catch(e) {}
+  document.getElementById("logTicket").value = "";
+  document.getElementById("logFc").value = "";
+  document.getElementById("logActions").value = "";
+  document.getElementById("logNotes").value = "";
+  renderLogs();
+}
+
+function deleteLog(id) {
+  ticketLogs = ticketLogs.filter(function(l){ return l.id !== id; });
+  try { localStorage.setItem("dc_logs", JSON.stringify(ticketLogs)); } catch(e) {}
+  renderLogs();
+}
+
+function renderLogs() {
+  var el = document.getElementById("logEntries");
+  if (!el) return;
+  if (!ticketLogs.length) { el.innerHTML = '<div class="empty-state">No ticket logs yet. Fill in the form above to start logging.</div>'; return; }
+  var html = "";
+  for (var i = 0; i < ticketLogs.length; i++) {
+    var l = ticketLogs[i];
+    html += '<div class="entry">';
+    html += '<div class="entry-head">';
+    html += '<span class="entry-fc">FC ' + l.fc + '</span>';
+    if (l.ticket) html += '<span class="entry-ticket">' + l.ticket + '</span>';
+    html += '<span class="status-badge status-' + l.status + '">' + l.status.toUpperCase() + '</span>';
+    html += '<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;background:rgba(167,139,250,0.1);color:var(--purple);border-radius:2px;">' + l.prog + '</span>';
+    html += '<span class="entry-time">' + l.time + '</span>';
+    html += '<button class="entry-del" onclick="deleteLog(' + l.id + ')">x</button>';
+    html += '</div>';
+    html += '<div class="entry-text"><strong>Actions:</strong> ' + l.actions + '</div>';
+    if (l.notes) html += '<div class="entry-note">Note: ' + l.notes + '</div>';
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function exportLogsCSV() {
+  if (!ticketLogs.length) { alert("No logs to export."); return; }
+  var rows = ["Ticket,FC,System,Status,Actions Taken,Notes,Time"];
+  for (var i = 0; i < ticketLogs.length; i++) {
+    var l = ticketLogs[i];
+    rows.push('"'+l.ticket+'","'+l.fc+'","'+l.prog+'","'+l.status+'","'+l.actions.replace(/"/g,"'")+'","'+(l.notes||"").replace(/"/g,"'")+'","'+l.time+'"');
+  }
+  downloadFile("ticket_logs.csv", rows.join("\n"), "text/csv");
+}
+
+// ============================================================
+// ESCALATION TRACKER
+// ============================================================
+function saveEsc() {
+  var fc = document.getElementById("escFc").value.trim();
+  if (!fc) { alert("Please enter a Fault Code."); return; }
+  var entry = {
+    id:      Date.now(),
+    ticket:  document.getElementById("escTicket").value.trim(),
+    fc:      fc,
+    reason:  document.getElementById("escReason").value,
+    to:      document.getElementById("escTo").value,
+    details: document.getElementById("escDetails").value.trim(),
+    time:    new Date().toLocaleString()
+  };
+  escalations.unshift(entry);
+  try { localStorage.setItem("dc_escs", JSON.stringify(escalations)); } catch(e) {}
+  document.getElementById("escTicket").value = "";
+  document.getElementById("escFc").value = "";
+  document.getElementById("escDetails").value = "";
+  renderEscs();
+}
+
+function deleteEsc(id) {
+  escalations = escalations.filter(function(e){ return e.id !== id; });
+  try { localStorage.setItem("dc_escs", JSON.stringify(escalations)); } catch(e) {}
+  renderEscs();
+}
+
+function renderEscs() {
+  var el = document.getElementById("escEntries");
+  if (!el) return;
+  if (!escalations.length) { el.innerHTML = '<div class="empty-state">No escalations logged yet.</div>'; return; }
+  var html = "";
+  for (var i = 0; i < escalations.length; i++) {
+    var e = escalations[i];
+    html += '<div class="entry" style="border-color:rgba(255,107,53,0.25)">';
+    html += '<div class="entry-head">';
+    html += '<span class="entry-fc">FC ' + e.fc + '</span>';
+    if (e.ticket) html += '<span class="entry-ticket">' + e.ticket + '</span>';
+    html += '<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;background:rgba(255,107,53,0.1);color:var(--accent2);border:1px solid rgba(255,107,53,0.3);border-radius:2px;">to: ' + e.to + '</span>';
+    html += '<span class="entry-time">' + e.time + '</span>';
+    html += '<button class="entry-del" onclick="deleteEsc(' + e.id + ')">x</button>';
+    html += '</div>';
+    html += '<div class="entry-text"><strong>Reason:</strong> ' + e.reason + '</div>';
+    if (e.details) html += '<div class="entry-note">Details: ' + e.details + '</div>';
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function exportEscCSV() {
+  if (!escalations.length) { alert("No escalations to export."); return; }
+  var rows = ["Ticket,FC,Reason,Escalated To,Details,Time"];
+  for (var i = 0; i < escalations.length; i++) {
+    var e = escalations[i];
+    rows.push('"'+e.ticket+'","'+e.fc+'","'+e.reason+'","'+e.to+'","'+(e.details||"").replace(/"/g,"'")+'","'+e.time+'"');
+  }
+  downloadFile("escalations.csv", rows.join("\n"), "text/csv");
+}
+
+// ============================================================
+// DOWNLOAD HELPER
+// ============================================================
+function downloadFile(filename, content, type) {
+  var blob = new Blob([content], { type: type });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+</script>
+</body>
+</html>
